@@ -250,7 +250,7 @@
 				ORGANIZATIONNAME = "Cell Phone";
 				TargetAttributes = {
 					BC982B0114F046AC0001FF6F = {
-						DevelopmentTeam = J2U2U9GBML;
+						DevelopmentTeam = T4VGFEE7BT;
 					};
 				};
 			};

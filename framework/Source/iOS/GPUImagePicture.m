@@ -1,5 +1,11 @@
 #import "GPUImagePicture.h"
 
+@interface GPUImagePicture ()
+
+@property (nonatomic, strong) NSMutableArray *reprocessComletionBlocks;
+
+@end
+
 @implementation GPUImagePicture
 
 #pragma mark -
@@ -61,11 +67,13 @@
     }
     
     hasProcessedImage = NO;
+	
+	reprocessImageWhenDone = NO;
+	self.reprocessComletionBlocks = [NSMutableArray array];
+	
     self.shouldSmoothlyScaleOutput = smoothlyScaleOutput;
-    imageUpdateSemaphore = dispatch_semaphore_create(0);
-    dispatch_semaphore_signal(imageUpdateSemaphore);
-
-
+    imageUpdateSemaphore = dispatch_semaphore_create(1);
+    
     // TODO: Dispatch this whole thing asynchronously to move image loading off main thread
     CGFloat widthOfImage = CGImageGetWidth(newImageSource);
     CGFloat heightOfImage = CGImageGetHeight(newImageSource);
@@ -243,7 +251,12 @@
     [self processImageWithCompletionHandler:nil];
 }
 
-- (BOOL)processImageWithCompletionHandler:(void (^)(void))completion;
+- (BOOL)processImageWithCompletionHandler:(void (^)(void))completion
+{
+	return [self processImageWithCompletionHandler:completion finalCompletionBlock:nil];
+}
+
+- (BOOL)processImageWithCompletionHandler:(void (^)(void))completion finalCompletionBlock:(void (^)(void))finalCompletion;
 {
     hasProcessedImage = YES;
     
@@ -251,10 +264,17 @@
     
     if (dispatch_semaphore_wait(imageUpdateSemaphore, DISPATCH_TIME_NOW) != 0)
     {
+		reprocessImageWhenDone = YES;
+		if (completion != nil)
+		{
+			[self.reprocessComletionBlocks addObject:[completion copy]];
+		}
+		
         return NO;
     }
     
-    runAsynchronouslyOnVideoProcessingQueue(^{        
+    runAsynchronouslyOnVideoProcessingQueue(^
+	{
         for (id<GPUImageInput> currentTarget in targets)
         {
             NSInteger indexOfObject = [targets indexOfObject:currentTarget];
@@ -271,6 +291,39 @@
         if (completion != nil) {
             completion();
         }
+		
+		if (reprocessImageWhenDone == YES)
+		{
+			runOnMainQueueWithoutDeadlocking(^
+			{
+				reprocessImageWhenDone = NO;
+				NSArray *processBlocks = [NSArray arrayWithArray:self.reprocessComletionBlocks];
+				[self.reprocessComletionBlocks removeAllObjects];
+				
+				BOOL imageProcessed = [self processImageWithCompletionHandler:nil];
+				if (imageProcessed)
+				{
+					runAsynchronouslyOnVideoProcessingQueue(^
+					{
+						for (void (^block)() in processBlocks)
+						{
+							block();
+						}
+					});
+				}
+				else
+				{
+					[self.reprocessComletionBlocks addObjectsFromArray:processBlocks];
+				}
+			});
+		}
+		
+		if ([self.reprocessComletionBlocks count] == 0)
+		{
+			if (finalCompletion != nil) {
+				finalCompletion();
+			}
+		}
     });
     
     return YES;

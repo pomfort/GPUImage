@@ -292,6 +292,12 @@ void reportAvailableMemoryForGPUImage(NSString *tag)
     return nil;
 }
 
+//pomfort-extension: getting float data from float based framebuffer
+- (NSData *)floatDataFromCurrentlyProcessedOutput
+{
+    return nil;
+}
+
 - (CGImageRef)newCGImageByFilteringCGImage:(CGImageRef)imageToFilter;
 {
     GPUImagePicture *stillImageSource = [[GPUImagePicture alloc] initWithCGImage:imageToFilter];

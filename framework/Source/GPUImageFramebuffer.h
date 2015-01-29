@@ -47,6 +47,9 @@ typedef struct GPUTextureOptions {
 
 // Image capture
 - (CGImageRef)newCGImageFromFramebufferContents;
+
+//pomfort-extension: getting float data from float based framebuffer
+- (NSData *)floatDataFromFramebufferContents;
 - (void)restoreRenderTarget;
 
 // Raw data bytes

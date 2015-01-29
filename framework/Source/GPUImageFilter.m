@@ -199,6 +199,27 @@ NSString *const kGPUImagePassthroughFragmentShaderString = SHADER_STRING
     return image;
 }
 
+//pomfort-extension: getting float data from float based framebuffer
+- (NSData *)floatDataFromCurrentlyProcessedOutput
+{
+    // Give it three seconds to process, then abort if they forgot to set up the image capture properly
+    double timeoutForImageCapture = 3.0;
+    dispatch_time_t convertedTimeout = dispatch_time(DISPATCH_TIME_NOW, timeoutForImageCapture * NSEC_PER_SEC);
+    
+    if (dispatch_semaphore_wait(imageCaptureSemaphore, convertedTimeout) != 0)
+    {
+        return NULL;
+    }
+    
+    GPUImageFramebuffer* framebuffer = [self framebufferForOutput];
+    
+    usingNextFrameForImageCapture = NO;
+    dispatch_semaphore_signal(imageCaptureSemaphore);
+    
+    NSData *floatData = [framebuffer floatDataFromFramebufferContents];
+    return floatData;
+}
+
 #pragma mark -
 #pragma mark Managing the display FBOs
 

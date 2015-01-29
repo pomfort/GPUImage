@@ -18,6 +18,9 @@
 - (id)initWithImage:(UIImage *)newImageSource smoothlyScaleOutput:(BOOL)smoothlyScaleOutput;
 - (id)initWithCGImage:(CGImageRef)newImageSource smoothlyScaleOutput:(BOOL)smoothlyScaleOutput;
 
+//pomfort-extension: create image from float data buffer
+- (id)initWithFloatImageData:(NSData *)floatImageData imageSize:(CGSize)imageSize;
+
 // Image rendering
 - (void)processImage;
 - (CGSize)outputImageSize;

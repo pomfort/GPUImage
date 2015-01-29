@@ -149,7 +149,13 @@ void dataProviderUnlockCallback (void *info, const void *data, size_t size);
             attrs = CFDictionaryCreateMutable(kCFAllocatorDefault, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
             CFDictionarySetValue(attrs, kCVPixelBufferIOSurfacePropertiesKey, empty);
             
-            CVReturn err = CVPixelBufferCreate(kCFAllocatorDefault, (int)_size.width, (int)_size.height, kCVPixelFormatType_32BGRA, attrs, &renderTarget);
+            //pomfort-extension: handle float based CVPixelBuffer
+            OSType pixelFormatType = kCVPixelFormatType_32BGRA;
+            if (_textureOptions.type == GL_HALF_FLOAT_OES && _textureOptions.format == GL_RGBA) {
+                pixelFormatType = kCVPixelFormatType_64RGBAHalf;
+            }
+            
+            CVReturn err = CVPixelBufferCreate(kCFAllocatorDefault, (int)_size.width, (int)_size.height, pixelFormatType, attrs, &renderTarget);
             if (err)
             {
                 NSLog(@"FBO size: %f, %f", _size.width, _size.height);
@@ -368,6 +374,35 @@ void dataProviderUnlockCallback (void *info, const void *data, size_t size)
     });
     
     return cgImageFromBytes;
+}
+
+//pomfort-extension: getting float data from float based framebuffer
+- (NSData *)floatDataFromFramebufferContents
+{
+    __block NSData *floatData;
+    
+    runSynchronouslyOnVideoProcessingQueue(^{
+        [GPUImageContext useImageProcessingContext];
+        
+        NSUInteger totalBytesForImage = (int)_size.width * (int)_size.height * 4 * 4;
+        
+        GLubyte *rawImagePixels;
+        
+        //we use read pixels to convert from half float to float, when using the fast access to the pixel buffer we would need to do the conversion manually
+        [self activateFramebuffer];
+        rawImagePixels = (GLubyte *)malloc(totalBytesForImage);
+        glReadPixels(0, 0, (int)_size.width, (int)_size.height, GL_RGBA, GL_FLOAT, rawImagePixels);
+        int glError = glGetError();
+        if (glError != 0) {
+            NSLog(@"Failed to read pixels for float");
+        }
+        [self unlock]; // Don't need to keep this around anymore
+        
+        
+        floatData = [NSData dataWithBytesNoCopy:rawImagePixels length:totalBytesForImage freeWhenDone:YES];
+    });
+    
+    return floatData;
 }
 
 - (void)restoreRenderTarget;

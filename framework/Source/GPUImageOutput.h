@@ -106,6 +106,8 @@ void reportAvailableMemoryForGPUImage(NSString *tag);
 
 - (void)useNextFrameForImageCapture;
 - (CGImageRef)newCGImageFromCurrentlyProcessedOutput;
+//pomfort-extension: getting float data from float based framebuffer
+- (NSData *)floatDataFromCurrentlyProcessedOutput;
 - (CGImageRef)newCGImageByFilteringCGImage:(CGImageRef)imageToFilter;
 
 // Platform-specific image output methods

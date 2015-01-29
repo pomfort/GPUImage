@@ -3,7 +3,7 @@
 
 @interface SimpleImageViewController : UIViewController
 {
-    GPUImagePicture *sourcePicture;
+    GPUImageRawDataInput *sourcePicture;
     GPUImageOutput<GPUImageInput> *sepiaFilter, *sepiaFilter2;
     
     UISlider *imageSlider;

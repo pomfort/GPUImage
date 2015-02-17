@@ -50,6 +50,12 @@
     return [self.terminalFilter newCGImageFromCurrentlyProcessedOutput];
 }
 
+//pomfort-extension: getting float data from float based framebuffer
+- (NSData *)floatDataFromCurrentlyProcessedOutput
+{
+    return [self.terminalFilter floatDataFromCurrentlyProcessedOutput];
+}
+
 #pragma mark -
 #pragma mark GPUImageOutput overrides
 
@@ -149,6 +155,14 @@
     for (GPUImageOutput<GPUImageInput> *currentFilter in filters)
     {
         [currentFilter forceProcessingAtSizeRespectingAspectRatio:frameSize];
+    }
+}
+
+-(void)setOutputTextureOptions:(GPUTextureOptions)outputTextureOptions
+{
+    for (GPUImageOutput<GPUImageInput> *currentFilter in filters)
+    {
+        [currentFilter setOutputTextureOptions:outputTextureOptions];
     }
 }
 

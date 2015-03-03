@@ -20,6 +20,7 @@
 
 //pomfort-extension: create image from float data buffer
 - (id)initWithFloatImageData:(NSData *)floatImageData imageSize:(CGSize)imageSize;
+- (id)initWithRGBImageData:(NSData *)rgbImageData imageSize:(CGSize)imageSize;
 
 // Image rendering
 - (void)processImage;

@@ -269,6 +269,51 @@
     return self;
 }
 
+- (id)initWithRGBImageData:(NSData *)rgbImageData imageSize:(CGSize)imageSize;
+{
+    if (!(self = [super init]))
+    {
+        return nil;
+    }
+    
+    hasProcessedImage = NO;
+    
+    reprocessImageWhenDone = NO;
+    self.reprocessComletionBlocks = [NSMutableArray array];
+    
+    self.shouldSmoothlyScaleOutput = NO;
+    imageUpdateSemaphore = dispatch_semaphore_create(1);
+    
+    // TODO: Dispatch this whole thing asynchronously to move image loading off main thread
+    CGFloat widthOfImage = imageSize.width;
+    CGFloat heightOfImage = imageSize.height;
+    
+    // If passed an empty image reference, CGContextDrawImage will fail in future versions of the SDK.
+    NSAssert( widthOfImage > 0 && heightOfImage > 0, @"Passed image must not be empty - it should be at least 1px tall and wide");
+    
+    pixelSizeOfImage = imageSize;
+    CGSize pixelSizeToUseForTexture = pixelSizeOfImage;
+    
+    runSynchronouslyOnVideoProcessingQueue(^{
+        [GPUImageContext useImageProcessingContext];
+        
+        outputFramebuffer = [[GPUImageContext sharedFramebufferCache] fetchFramebufferForSize:pixelSizeToUseForTexture onlyTexture:YES];
+        [outputFramebuffer disableReferenceCounting];
+        
+        glBindTexture(GL_TEXTURE_2D, [outputFramebuffer texture]);
+        // no need to use self.outputTextureOptions here since pictures need this texture formats and type
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (int)pixelSizeToUseForTexture.width, (int)pixelSizeToUseForTexture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, [rgbImageData bytes]);
+        int glError = glGetError();
+        if (glError != 0) {
+            NSLog(@"uploading image to texture failed: %d",glError);
+        }
+        
+        glBindTexture(GL_TEXTURE_2D, 0);
+    });
+    
+    return self;
+}
+
 // ARC forbids explicit message send of 'release'; since iOS 6 even for dispatch_release() calls: stripping it out in that case is required.
 - (void)dealloc;
 {

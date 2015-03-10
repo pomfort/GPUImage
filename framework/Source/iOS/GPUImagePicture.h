@@ -41,4 +41,10 @@
  */
 - (BOOL)processImageWithCompletionHandler:(void (^)(void))completion finalCompletionBlock:(void (^)(void))finalCompletion;
 
+/**
+ * Optional argument extends method above.
+ * If you want to wait until the new image semaphore is unlocked instead of do a reprocessing afterwards, you can pass NO to shouldReprocess
+ */
+- (BOOL)processImageWithCompletionHandler:(void (^)(void))completion finalCompletionBlock:(void (^)(void))finalCompletion shouldReprocessImageWhenDone:(BOOL)shouldReprocess;
+
 @end

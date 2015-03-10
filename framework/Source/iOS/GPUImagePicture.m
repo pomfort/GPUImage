@@ -114,8 +114,9 @@
         /* Check that the memory layout is compatible with GL, as we cannot use glPixelStore to
          * tell GL about the memory layout with GLES.
          */
-        if (CGImageGetBytesPerRow(newImageSource) != CGImageGetWidth(newImageSource) * 4 ||
-            CGImageGetBitsPerPixel(newImageSource) != 32 ||
+        //also allow rgb images without alpha to be uploaded without redraw
+        if ( (CGImageGetBytesPerRow(newImageSource) != CGImageGetWidth(newImageSource) * 4 && CGImageGetBytesPerRow(newImageSource) != CGImageGetWidth(newImageSource) * 3) ||
+            (CGImageGetBitsPerPixel(newImageSource) != 32 && CGImageGetBitsPerPixel(newImageSource) != 24) ||
             CGImageGetBitsPerComponent(newImageSource) != 8)
         {
             shouldRedrawUsingCoreGraphics = YES;
@@ -137,7 +138,10 @@
                 } else if (byteOrderInfo == kCGBitmapByteOrderDefault || byteOrderInfo == kCGBitmapByteOrder32Big) {
                     /* Big endian, for alpha-last we can use this bitmap directly in GL */
                     CGImageAlphaInfo alphaInfo = bitmapInfo & kCGBitmapAlphaInfoMask;
-                    if (alphaInfo != kCGImageAlphaPremultipliedLast && alphaInfo != kCGImageAlphaLast &&
+                    if (alphaInfo == kCGImageAlphaNone) {
+                        format = GL_RGB;
+                    }
+                    else if (alphaInfo != kCGImageAlphaPremultipliedLast && alphaInfo != kCGImageAlphaLast &&
                         alphaInfo != kCGImageAlphaNoneSkipLast) {
                         shouldRedrawUsingCoreGraphics = YES;
                     } else {
@@ -198,8 +202,13 @@
         {
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         }
+        
+        GLenum internalFormat = GL_RGBA;
+        if (format == GL_RGB) {
+            internalFormat = GL_RGB;
+        }
         // no need to use self.outputTextureOptions here since pictures need this texture formats and type
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (int)pixelSizeToUseForTexture.width, (int)pixelSizeToUseForTexture.height, 0, format, GL_UNSIGNED_BYTE, imageData);
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, (int)pixelSizeToUseForTexture.width, (int)pixelSizeToUseForTexture.height, 0, format, GL_UNSIGNED_BYTE, imageData);
         
         if (self.shouldSmoothlyScaleOutput)
         {
@@ -347,21 +356,30 @@
 	return [self processImageWithCompletionHandler:completion finalCompletionBlock:nil];
 }
 
-- (BOOL)processImageWithCompletionHandler:(void (^)(void))completion finalCompletionBlock:(void (^)(void))finalCompletion;
+- (BOOL)processImageWithCompletionHandler:(void (^)(void))completion finalCompletionBlock:(void (^)(void))finalCompletion
+{
+    return [self processImageWithCompletionHandler:completion finalCompletionBlock:finalCompletion shouldReprocessImageWhenDone:YES];
+}
+
+- (BOOL)processImageWithCompletionHandler:(void (^)(void))completion finalCompletionBlock:(void (^)(void))finalCompletion shouldReprocessImageWhenDone:(BOOL)shouldReprocess
 {
     hasProcessedImage = YES;
     
-    //    dispatch_semaphore_wait(imageUpdateSemaphore, DISPATCH_TIME_FOREVER);
-    
-    if (dispatch_semaphore_wait(imageUpdateSemaphore, DISPATCH_TIME_NOW) != 0)
-    {
-		reprocessImageWhenDone = YES;
-		if (completion != nil)
-		{
-			[self.reprocessComletionBlocks addObject:[completion copy]];
-		}
-		
-        return NO;
+    //TODO: we may want to return no here and refilter outise in the client app
+    if (shouldReprocess == NO) {
+        dispatch_semaphore_wait(imageUpdateSemaphore, DISPATCH_TIME_FOREVER);
+    }
+    else {
+        if (dispatch_semaphore_wait(imageUpdateSemaphore, DISPATCH_TIME_NOW) != 0)
+        {
+            reprocessImageWhenDone = YES;
+            if (completion != nil)
+            {
+                [self.reprocessComletionBlocks addObject:[completion copy]];
+            }
+            
+            return NO;
+        }
     }
     
     runAsynchronouslyOnVideoProcessingQueue(^

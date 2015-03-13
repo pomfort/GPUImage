@@ -358,7 +358,7 @@
 
 - (BOOL)processImageWithCompletionHandler:(void (^)(void))completion finalCompletionBlock:(void (^)(void))finalCompletion
 {
-    return [self processImageWithCompletionHandler:completion finalCompletionBlock:finalCompletion shouldReprocessImageWhenDone:YES];
+    return [self processImageWithCompletionHandler:completion finalCompletionBlock:finalCompletion shouldReprocessImageWhenDone:NO];
 }
 
 - (BOOL)processImageWithCompletionHandler:(void (^)(void))completion finalCompletionBlock:(void (^)(void))finalCompletion shouldReprocessImageWhenDone:(BOOL)shouldReprocess
